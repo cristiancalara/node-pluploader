@@ -2,6 +2,10 @@
 
 Handles Plupload's chunked uploads so you don't have to.
 
+This fork moves out from using an event on successful upload, and allow the user to provide a callback for when the file is uploaded. Useful in cases where you need to return some information after uploading the file e.g. media id
+
+You can also set a callback for each chunk.
+
 ## Example
 
 ```JavaScript
@@ -17,16 +21,6 @@ var pluploader = new Pluploader({
 });
 
 /*
-  * Emitted when an entire file has been uploaded.
-  *
-  * @param file {Object} An object containing the uploaded file's name, type, buffered data & size
-  * @param req {Request} The request that carried in the final chunk
-  */
-pluploader.on('fileUploaded', function(file, req) {
-  console.log(file);
-});
-
-/*
   * Emitted when an error occurs
   *
   * @param error {Error} The error
@@ -37,7 +31,31 @@ pluploader.on('error', function(error) {
 
 // This example assumes you're using Express
 app.post('/upload', function(req, res){
-  pluploader.handleRequest(req, res);
+  pluploader.handleRequest(req, res, function(file, req, res) {
+        var media = new Media({
+            type: file.type,
+            size: file.size,
+            data: file.data
+        });
+        
+        media.save(function (err, updatedMedia) {
+          if (err) {
+          	res.json({
+                'jsonrpc': '2.0',
+                'error': {
+                    code: 500,
+                    'message': 'Unknown error occurred'
+                }
+            });
+          }
+         
+          // saved!
+          res.json({
+              'jsonrpc': '2.0',
+              'id': updatedMedia.id
+          });
+        });
+  });
 });
 ```
 
